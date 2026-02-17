@@ -1,0 +1,1358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediConnect | Telemedicine Platform</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome (CDN) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#2563eb', // Blue 600
+                        secondary: '#3b82f6', // Blue 500
+                        accent: '#0ea5e9', // Sky 500
+                        dark: '#0f172a', // Slate 900
+                        light: '#f8fafc', // Slate 50
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Styles & Animations */
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        
+        .fade-in { animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .slide-in { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+        /* Hide scrollbar for clean UI in specific areas */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Loader */
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #2563eb; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Toast Notification */
+        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 50; }
+        .toast { background: white; padding: 16px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 10px; display: flex; align-items: center; min-width: 300px; border-left: 4px solid #2563eb; }
+        .toast.success { border-left-color: #22c55e; }
+        .toast.error { border-left-color: #ef4444; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased">
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Navigation -->
+    <nav class="bg-white sticky top-0 z-40 shadow-sm border-b border-slate-100">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <!-- Logo -->
+                <div class="flex items-center cursor-pointer" onclick="router('home')">
+                    <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white mr-2">
+                        <i class="fa-solid fa-heart-pulse"></i>
+                    </div>
+                    <span class="text-xl font-bold text-dark tracking-tight">Medi<span class="text-primary">Connect</span></span>
+                </div>
+
+                <!-- Desktop Menu -->
+                <div class="hidden md:flex space-x-8">
+                    <button onclick="router('home')" class="text-slate-600 hover:text-primary font-medium transition">Home</button>
+                    <button onclick="router('doctors')" class="text-slate-600 hover:text-primary font-medium transition">Doctors</button>
+                    <button onclick="router('pharmacy')" class="text-slate-600 hover:text-primary font-medium transition">Pharmacy</button>
+                </div>
+
+                <!-- Auth/Profile Buttons -->
+                <div class="hidden md:flex items-center space-x-4">
+                    <button onclick="router('cart')" class="relative p-2 text-slate-600 hover:text-primary transition">
+                        <i class="fa-solid fa-cart-shopping text-xl"></i>
+                        <span id="cart-badge" class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/4 -translate-y-1/4 bg-red-500 rounded-full hidden">0</span>
+                    </button>
+                    
+                    <div id="auth-buttons-desktop">
+                        <button onclick="router('login')" class="text-primary font-semibold hover:bg-blue-50 px-4 py-2 rounded-lg transition">Log in</button>
+                        <button onclick="router('signup')" class="bg-primary hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg transition shadow-md shadow-blue-200">Sign up</button>
+                    </div>
+
+                    <div id="user-menu-desktop" class="hidden relative group">
+                        <button onclick="router('dashboard')" class="flex items-center space-x-2 focus:outline-none">
+                            <img src="https://ui-avatars.com/api/?name=User&background=eff6ff&color=2563eb" id="nav-user-img" alt="User" class="h-8 w-8 rounded-full border border-slate-200">
+                            <span id="nav-user-name" class="font-medium text-sm text-slate-700">User</span>
+                        </button>
+                        <!-- Dropdown -->
+                        <div class="absolute right-0 w-48 mt-2 origin-top-right bg-white border border-gray-100 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                            <div class="py-1">
+                                <a href="#" onclick="router('dashboard')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Dashboard</a>
+                                <a href="#" onclick="auth.logout()" class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-50">Sign out</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <div class="md:hidden flex items-center">
+                    <button onclick="toggleMobileMenu()" class="text-slate-600 hover:text-dark focus:outline-none">
+                        <i class="fa-solid fa-bars text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile Menu Dropdown -->
+        <div id="mobile-menu" class="hidden md:hidden bg-white border-t border-slate-100 px-4 pt-2 pb-4 shadow-lg">
+            <a onclick="router('home'); toggleMobileMenu()" class="block py-2 text-slate-600 font-medium">Home</a>
+            <a onclick="router('doctors'); toggleMobileMenu()" class="block py-2 text-slate-600 font-medium">Doctors</a>
+            <a onclick="router('pharmacy'); toggleMobileMenu()" class="block py-2 text-slate-600 font-medium">Pharmacy</a>
+            <a onclick="router('cart'); toggleMobileMenu()" class="block py-2 text-slate-600 font-medium">Cart</a>
+            <div id="auth-buttons-mobile" class="mt-4 flex flex-col space-y-2">
+                <button onclick="router('login'); toggleMobileMenu()" class="w-full text-center py-2 text-primary font-semibold border border-primary rounded-lg">Log in</button>
+                <button onclick="router('signup'); toggleMobileMenu()" class="w-full text-center py-2 bg-primary text-white font-semibold rounded-lg">Sign up</button>
+            </div>
+            <div id="user-menu-mobile" class="hidden mt-4 pt-4 border-t border-slate-100">
+                 <button onclick="router('dashboard'); toggleMobileMenu()" class="block w-full text-left py-2 text-slate-700 font-medium">My Dashboard</button>
+                 <button onclick="auth.logout(); toggleMobileMenu()" class="block w-full text-left py-2 text-red-600 font-medium">Sign Out</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT AREA -->
+    <main id="app-content" class="min-h-screen">
+        <!-- Content will be injected here by JS -->
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-slate-300 py-12 mt-auto">
+        <div class="container mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div>
+                <div class="flex items-center mb-4">
+                    <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white mr-2">
+                        <i class="fa-solid fa-heart-pulse"></i>
+                    </div>
+                    <span class="text-xl font-bold text-white">Medi<span class="text-primary">Connect</span></span>
+                </div>
+                <p class="text-sm text-slate-400">Providing world-class healthcare services at your fingertips. Connect with top specialists instantly.</p>
+            </div>
+            <div>
+                <h3 class="text-white font-semibold mb-4">Quick Links</h3>
+                <ul class="space-y-2 text-sm">
+                    <li><a href="#" onclick="router('home')" class="hover:text-primary">Home</a></li>
+                    <li><a href="#" onclick="router('doctors')" class="hover:text-primary">Find a Doctor</a></li>
+                    <li><a href="#" onclick="router('pharmacy')" class="hover:text-primary">Pharmacy</a></li>
+                </ul>
+            </div>
+            <div>
+                <h3 class="text-white font-semibold mb-4">Services</h3>
+                <ul class="space-y-2 text-sm">
+                    <li><a class="hover:text-primary">Telemedicine</a></li>
+                    <li><a class="hover:text-primary">Mental Health</a></li>
+                    <li><a class="hover:text-primary">Home Delivery</a></li>
+                </ul>
+            </div>
+            <div>
+                <h3 class="text-white font-semibold mb-4">Contact</h3>
+                <ul class="space-y-2 text-sm">
+                    <li><i class="fa-solid fa-envelope mr-2"></i> support@mediconnect.com</li>
+                    <li><i class="fa-solid fa-phone mr-2"></i> +1 (555) 123-4567</li>
+                    <li class="flex space-x-4 mt-4">
+                        <a class="hover:text-white"><i class="fa-brands fa-facebook"></i></a>
+                        <a class="hover:text-white"><i class="fa-brands fa-twitter"></i></a>
+                        <a class="hover:text-white"><i class="fa-brands fa-linkedin"></i></a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div class="border-t border-slate-800 mt-8 pt-8 text-center text-xs text-slate-500">
+            &copy; 2026 MediConnect. All rights reserved. Builds With InfyntraCore.
+        </div>
+    </footer>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // --- DATA MOCKS ---
+        
+        const MOCK_DOCTORS = [
+            {
+                id: 1,
+                name: "Dr. Sarah Johnson",
+                category: "Cardiologist",
+                image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300&h=300",
+                rating: 4.9,
+                reviews: 120,
+                price: 50,
+                hospital: "Central Heart Institute",
+                experience: "12 Years",
+                bio: "Specialist in interventional cardiology with a focus on preventative care.",
+                education: "MD - Harvard Medical School"
+            },
+            {
+                id: 2,
+                name: "Dr. Michael Chen",
+                category: "Dermatologist",
+                image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=300&h=300",
+                rating: 4.8,
+                reviews: 85,
+                price: 45,
+                hospital: "Skin Care Alliance",
+                experience: "8 Years",
+                bio: "Expert in treating acne, eczema, and cosmetic dermatology procedures.",
+                education: "MD - Stanford University"
+            },
+            {
+                id: 3,
+                name: "Dr. Emily Davis",
+                category: "Pediatrician",
+                image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?auto=format&fit=crop&q=80&w=300&h=300",
+                rating: 5.0,
+                reviews: 200,
+                price: 40,
+                hospital: "Happy Kids Clinic",
+                experience: "15 Years",
+                bio: "Dedicated to the physical, emotional, and social health of children from birth.",
+                education: "MD - Johns Hopkins"
+            },
+            {
+                id: 4,
+                name: "Dr. James Wilson",
+                category: "Neurologist",
+                image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&q=80&w=300&h=300",
+                rating: 4.7,
+                reviews: 64,
+                price: 60,
+                hospital: "Neuro Science Center",
+                experience: "10 Years",
+                bio: "Focuses on disorders of the nervous system including epilepsy and migraines.",
+                education: "MD - Yale University"
+            },
+            {
+                id: 5,
+                name: "Dr. Linda Martinez",
+                category: "General Physician",
+                image: "https://images.unsplash.com/photo-1614608682850-e0d6ed316d47?auto=format&fit=crop&q=80&w=300&h=300",
+                rating: 4.6,
+                reviews: 150,
+                price: 35,
+                hospital: "City Health Clinic",
+                experience: "20 Years",
+                bio: "Comprehensive primary care for adults and families.",
+                education: "MD - University of Chicago"
+            },
+             {
+                id: 6,
+                name: "Dr. Robert Stone",
+                category: "Cardiologist",
+                image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=300&h=300",
+                rating: 4.8,
+                reviews: 90,
+                price: 55,
+                hospital: "Central Heart Institute",
+                experience: "14 Years",
+                bio: "Advanced cardiac imaging and heart failure management.",
+                education: "MD - Columbia University"
+            }
+        ];
+
+        const MOCK_MEDICINES = [
+            {
+                id: 101,
+                name: "Paracetamol 500mg",
+                category: "Pain Relief",
+                price: 5.00,
+                image: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=300&h=300",
+                desc: "Effective pain relief and fever reducer. Pack of 20 tablets."
+            },
+            {
+                id: 102,
+                name: "Amoxicillin 250mg",
+                category: "Antibiotics",
+                price: 12.50,
+                image: "https://images.unsplash.com/photo-1471864190281-a93a3070b6de?auto=format&fit=crop&q=80&w=300&h=300",
+                desc: "Broad-spectrum antibiotic for bacterial infections. Prescription required."
+            },
+            {
+                id: 103,
+                name: "Multivitamin Complex",
+                category: "Vitamins",
+                price: 25.00,
+                image: "https://images.unsplash.com/photo-1550572017-edd951aa8f72?auto=format&fit=crop&q=80&w=300&h=300",
+                desc: "Daily supplement for immunity and energy. 60 capsules."
+            },
+            {
+                id: 104,
+                name: "Insulin Pen",
+                category: "Diabetes Care",
+                price: 45.00,
+                image: "https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&q=80&w=300&h=300",
+                desc: "Easy to use insulin delivery device. Consult doctor before use."
+            },
+            {
+                id: 105,
+                name: "Ibuprofen 400mg",
+                category: "Pain Relief",
+                price: 8.00,
+                image: "https://images.unsplash.com/photo-1585435557343-3b092031a831?auto=format&fit=crop&q=80&w=300&h=300",
+                desc: "Anti-inflammatory for muscle pain and arthritis."
+            },
+            {
+                id: 106,
+                name: "Vitamin C 1000mg",
+                category: "Vitamins",
+                price: 15.00,
+                image: "https://images.unsplash.com/photo-1584017911766-d451b3d0e843?auto=format&fit=crop&q=80&w=300&h=300",
+                desc: "Boosts immune system. Effervescent tablets."
+            }
+        ];
+
+        // --- STATE MANAGEMENT ---
+
+        const db = {
+            users: JSON.parse(localStorage.getItem('users')) || [],
+            currentUser: JSON.parse(localStorage.getItem('currentUser')) || null,
+            appointments: JSON.parse(localStorage.getItem('appointments')) || [],
+            orders: JSON.parse(localStorage.getItem('orders')) || [],
+            cart: JSON.parse(localStorage.getItem('cart')) || []
+        };
+
+        const saveDB = () => {
+            localStorage.setItem('users', JSON.stringify(db.users));
+            localStorage.setItem('currentUser', JSON.stringify(db.currentUser));
+            localStorage.setItem('appointments', JSON.stringify(db.appointments));
+            localStorage.setItem('orders', JSON.stringify(db.orders));
+            localStorage.setItem('cart', JSON.stringify(db.cart));
+            updateUI();
+        };
+
+        // --- UTILITIES ---
+
+        const utils = {
+            toast: (msg, type = 'success') => {
+                const container = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                toast.className = `toast ${type} fade-in`;
+                toast.innerHTML = `
+                    <div class="mr-3 text-xl">
+                        ${type === 'success' ? '<i class="fa-solid fa-circle-check text-green-500"></i>' : '<i class="fa-solid fa-circle-exclamation text-red-500"></i>'}
+                    </div>
+                    <div class="font-medium text-slate-700">${msg}</div>
+                `;
+                container.appendChild(toast);
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            },
+            generateId: () => Math.random().toString(36).substr(2, 9),
+            formatDate: (dateStr) => {
+                const options = { year: 'numeric', month: 'long', day: 'numeric' };
+                return new Date(dateStr).toLocaleDateString(undefined, options);
+            }
+        };
+
+        // --- AUTH CONTROLLER ---
+
+        const auth = {
+            signup: (name, email, phone, password) => {
+                const exists = db.users.find(u => u.email === email);
+                if (exists) {
+                    utils.toast('Email already exists', 'error');
+                    return false;
+                }
+                const newUser = { id: utils.generateId(), name, email, phone, password };
+                db.users.push(newUser);
+                db.currentUser = newUser;
+                saveDB();
+                utils.toast('Account created successfully!');
+                router('dashboard');
+                return true;
+            },
+            login: (email, password) => {
+                const user = db.users.find(u => u.email === email && u.password === password);
+                if (user) {
+                    db.currentUser = user;
+                    saveDB();
+                    utils.toast('Welcome back!');
+                    router('dashboard');
+                    return true;
+                }
+                utils.toast('Invalid credentials', 'error');
+                return false;
+            },
+            socialLogin: (provider) => {
+                // Mock Login - Check if mock user already exists for persistence
+                const email = `user@${provider.toLowerCase()}.com`;
+                let user = db.users.find(u => u.email === email);
+                
+                if (!user) {
+                    // Create new social user if not exists
+                    user = { 
+                        id: 'social_' + utils.generateId(), 
+                        name: `${provider} User`, 
+                        email: email, 
+                        phone: '000-000-0000', 
+                        password: 'social_login_pass' 
+                    };
+                    db.users.push(user);
+                }
+
+                db.currentUser = user;
+                saveDB();
+                utils.toast(`Logged in with ${provider}`);
+                router('dashboard');
+            },
+            logout: () => {
+                db.currentUser = null;
+                saveDB();
+                utils.toast('Logged out successfully');
+                router('home');
+            }
+        };
+
+        // --- CORE LOGIC (Cart, Booking) ---
+
+        const core = {
+            addToCart: (medId) => {
+                const med = MOCK_MEDICINES.find(m => m.id === medId);
+                const existing = db.cart.find(item => item.id === medId);
+                if (existing) {
+                    existing.qty++;
+                } else {
+                    db.cart.push({ ...med, qty: 1 });
+                }
+                saveDB();
+                utils.toast(`${med.name} added to cart`);
+            },
+            removeFromCart: (medId) => {
+                db.cart = db.cart.filter(item => item.id !== medId);
+                saveDB();
+                renderFunctions.cart();
+            },
+            updateQty: (medId, change) => {
+                const item = db.cart.find(i => i.id === medId);
+                if (item) {
+                    item.qty += change;
+                    if (item.qty <= 0) core.removeFromCart(medId);
+                    else {
+                        saveDB();
+                        renderFunctions.cart();
+                    }
+                }
+            },
+            bookAppointment: (docId, date, time) => {
+                if (!db.currentUser) {
+                    utils.toast('Please login to book', 'error');
+                    router('login');
+                    return;
+                }
+                // Check conflicts
+                const conflict = db.appointments.find(a => a.doctorId === docId && a.date === date && a.time === time);
+                if (conflict) {
+                    utils.toast('Slot already booked. Please choose another.', 'error');
+                    return;
+                }
+                const doctor = MOCK_DOCTORS.find(d => d.id === docId);
+                const appt = {
+                    id: utils.generateId(),
+                    userId: db.currentUser.id,
+                    doctorId: docId,
+                    doctorName: doctor.name,
+                    doctorImg: doctor.image,
+                    date,
+                    time,
+                    status: 'Confirmed',
+                    contact: '+1-555-0192' // Revealed after booking
+                };
+                db.appointments.push(appt);
+                saveDB();
+                utils.toast('Appointment Booked Successfully!');
+                router('dashboard');
+            },
+            placeOrder: (paymentMethod, total) => {
+                if(!db.currentUser) { router('login'); return; }
+                const order = {
+                    id: 'ORD-' + utils.generateId().toUpperCase(),
+                    userId: db.currentUser.id,
+                    items: [...db.cart],
+                    total: total,
+                    date: new Date().toISOString(),
+                    paymentMethod: paymentMethod,
+                    status: 'Processing'
+                };
+                db.orders.push(order);
+                db.cart = []; // Clear cart
+                saveDB();
+                return order.id;
+            }
+        };
+
+        // --- VIEWS / TEMPLATES ---
+
+        const templates = {
+            home: () => `
+                <!-- Hero -->
+                <section class="relative bg-gradient-to-r from-blue-600 to-blue-500 text-white overflow-hidden fade-in">
+                    <div class="container mx-auto px-4 py-20 md:py-32 grid md:grid-cols-2 gap-12 items-center">
+                        <div class="space-y-6 z-10">
+                            <span class="bg-blue-800 text-blue-100 text-sm font-semibold px-3 py-1 rounded-full uppercase tracking-wider">#1 Telemedicine App</span>
+                            <h1 class="text-4xl md:text-6xl font-bold leading-tight">Your Health, <br> Our Priority.</h1>
+                            <p class="text-lg text-blue-100 max-w-lg">Connect with top-rated doctors, order medicines, and manage your health records - all in one place.</p>
+                            <div class="flex space-x-4">
+                                <button onclick="router('doctors')" class="bg-white text-blue-600 font-bold px-8 py-3 rounded-xl shadow-lg hover:bg-slate-100 transition transform hover:-translate-y-1">Find a Doctor</button>
+                                <button onclick="router('pharmacy')" class="bg-blue-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg hover:bg-blue-800 transition">Buy Medicine</button>
+                            </div>
+                            <div class="pt-8 flex items-center space-x-8">
+                                <div>
+                                    <h4 class="text-3xl font-bold">500+</h4>
+                                    <p class="text-blue-200 text-sm">Specialists</p>
+                                </div>
+                                <div>
+                                    <h4 class="text-3xl font-bold">10k+</h4>
+                                    <p class="text-blue-200 text-sm">Happy Patients</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="relative z-10 hidden md:block">
+                            <img src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=800" class="rounded-2xl shadow-2xl border-4 border-white/20 transform rotate-2 hover:rotate-0 transition duration-500" alt="Doctor Team">
+                        </div>
+                    </div>
+                    <!-- Decorative Circle -->
+                    <div class="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
+                </section>
+
+                <!-- Services Preview -->
+                <section class="py-20 bg-white">
+                    <div class="container mx-auto px-4">
+                        <div class="text-center max-w-2xl mx-auto mb-16">
+                            <h2 class="text-3xl font-bold text-dark mb-4">Comprehensive Healthcare</h2>
+                            <p class="text-slate-500">We provide the best medical services for you and your family.</p>
+                        </div>
+                        <div class="grid md:grid-cols-3 gap-8">
+                            <div class="p-8 bg-slate-50 rounded-2xl hover:shadow-xl transition cursor-pointer border border-slate-100 group" onclick="router('doctors')">
+                                <div class="w-14 h-14 bg-blue-100 text-primary rounded-xl flex items-center justify-center text-2xl mb-6 group-hover:bg-primary group-hover:text-white transition">
+                                    <i class="fa-solid fa-user-doctor"></i>
+                                </div>
+                                <h3 class="text-xl font-bold text-dark mb-2">Expert Doctors</h3>
+                                <p class="text-slate-500">Book appointments with top specialists across various departments.</p>
+                            </div>
+                            <div class="p-8 bg-slate-50 rounded-2xl hover:shadow-xl transition cursor-pointer border border-slate-100 group" onclick="router('pharmacy')">
+                                <div class="w-14 h-14 bg-green-100 text-green-600 rounded-xl flex items-center justify-center text-2xl mb-6 group-hover:bg-green-600 group-hover:text-white transition">
+                                    <i class="fa-solid fa-pills"></i>
+                                </div>
+                                <h3 class="text-xl font-bold text-dark mb-2">Online Pharmacy</h3>
+                                <p class="text-slate-500">Genuine medicines delivered to your doorstep within 24 hours.</p>
+                            </div>
+                            <div class="p-8 bg-slate-50 rounded-2xl hover:shadow-xl transition cursor-pointer border border-slate-100 group" onclick="router('dashboard')">
+                                <div class="w-14 h-14 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center text-2xl mb-6 group-hover:bg-purple-600 group-hover:text-white transition">
+                                    <i class="fa-solid fa-file-medical"></i>
+                                </div>
+                                <h3 class="text-xl font-bold text-dark mb-2">Health Records</h3>
+                                <p class="text-slate-500">Securely store and access your prescriptions and medical history.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            `,
+            login: () => `
+                <section class="min-h-[80vh] flex items-center justify-center py-12 px-4 fade-in">
+                    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-100">
+                        <div class="text-center mb-8">
+                            <h2 class="text-3xl font-bold text-dark">Welcome Back</h2>
+                            <p class="text-slate-500 mt-2">Sign in to manage your health</p>
+                        </div>
+                        
+                        <form onsubmit="event.preventDefault(); handleLoginForm()" class="space-y-5">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+                                <input type="email" id="login-email" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition" required placeholder="you@example.com">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                                <input type="password" id="login-pass" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition" required placeholder="••••••••">
+                            </div>
+                            <button type="submit" id="login-btn" class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-md">
+                                Sign In
+                            </button>
+                        </form>
+
+                        <div class="mt-8">
+                            <div class="relative mb-6">
+                                <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200"></div></div>
+                                <div class="relative flex justify-center text-sm"><span class="px-4 bg-white text-slate-500 font-medium">OR Continue With</span></div>
+                            </div>
+                            <div class="flex flex-col space-y-3">
+                                <button onclick="auth.socialLogin('Google')" class="flex items-center justify-center w-full px-4 py-3 border border-slate-200 rounded-lg shadow-sm bg-white text-slate-700 hover:bg-slate-50 transition transform hover:-translate-y-0.5">
+                                    <i class="fa-brands fa-google text-red-500 text-xl mr-3"></i>
+                                    <span class="font-medium">Continue with Google</span>
+                                </button>
+                                <button onclick="auth.socialLogin('Facebook')" class="flex items-center justify-center w-full px-4 py-3 rounded-lg shadow-sm bg-[#1877f2] text-white hover:bg-[#166fe5] transition transform hover:-translate-y-0.5">
+                                    <i class="fa-brands fa-facebook text-xl mr-3"></i>
+                                    <span class="font-medium">Continue with Facebook</span>
+                                </button>
+                                <button onclick="auth.socialLogin('LinkedIn')" class="flex items-center justify-center w-full px-4 py-3 rounded-lg shadow-sm bg-[#0a66c2] text-white hover:bg-[#004182] transition transform hover:-translate-y-0.5">
+                                    <i class="fa-brands fa-linkedin text-xl mr-3"></i>
+                                    <span class="font-medium">Continue with LinkedIn</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <p class="mt-8 text-center text-sm text-slate-600">
+                            Don't have an account? <a href="#" onclick="router('signup')" class="text-primary font-semibold hover:underline">Sign up</a>
+                        </p>
+                    </div>
+                </section>
+            `,
+            signup: () => `
+                <section class="min-h-[80vh] flex items-center justify-center py-12 px-4 fade-in">
+                    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-100">
+                        <div class="text-center mb-8">
+                            <h2 class="text-3xl font-bold text-dark">Create Account</h2>
+                            <p class="text-slate-500 mt-2">Join MediConnect today</p>
+                        </div>
+                        
+                        <form onsubmit="event.preventDefault(); handleSignupForm()" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
+                                <input type="text" id="signup-name" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition" required placeholder="John Doe">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+                                <input type="email" id="signup-email" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition" required placeholder="you@example.com">
+                            </div>
+                             <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
+                                <input type="tel" id="signup-phone" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition" required placeholder="+1 234 567 8900">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                                    <input type="password" id="signup-pass" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition" required placeholder="Min 6 chars">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Confirm</label>
+                                    <input type="password" id="signup-confirm-pass" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition" required placeholder="Confirm">
+                                </div>
+                            </div>
+                            <button type="submit" id="signup-btn" class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-md mt-2">
+                                Create Account
+                            </button>
+                        </form>
+
+                        <div class="mt-8">
+                            <div class="relative mb-6">
+                                <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200"></div></div>
+                                <div class="relative flex justify-center text-sm"><span class="px-4 bg-white text-slate-500 font-medium">OR Continue With</span></div>
+                            </div>
+                            <div class="flex flex-col space-y-3">
+                                <button onclick="auth.socialLogin('Google')" class="flex items-center justify-center w-full px-4 py-3 border border-slate-200 rounded-lg shadow-sm bg-white text-slate-700 hover:bg-slate-50 transition transform hover:-translate-y-0.5">
+                                    <i class="fa-brands fa-google text-red-500 text-xl mr-3"></i>
+                                    <span class="font-medium">Continue with Google</span>
+                                </button>
+                                <button onclick="auth.socialLogin('Facebook')" class="flex items-center justify-center w-full px-4 py-3 rounded-lg shadow-sm bg-[#1877f2] text-white hover:bg-[#166fe5] transition transform hover:-translate-y-0.5">
+                                    <i class="fa-brands fa-facebook text-xl mr-3"></i>
+                                    <span class="font-medium">Continue with Facebook</span>
+                                </button>
+                                <button onclick="auth.socialLogin('LinkedIn')" class="flex items-center justify-center w-full px-4 py-3 rounded-lg shadow-sm bg-[#0a66c2] text-white hover:bg-[#004182] transition transform hover:-translate-y-0.5">
+                                    <i class="fa-brands fa-linkedin text-xl mr-3"></i>
+                                    <span class="font-medium">Continue with LinkedIn</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <p class="mt-6 text-center text-sm text-slate-600">
+                            Already have an account? <a href="#" onclick="router('login')" class="text-primary font-semibold hover:underline">Log in</a>
+                        </p>
+                    </div>
+                </section>
+            `,
+            doctors: () => `
+                <section class="container mx-auto px-4 py-12 fade-in">
+                    <div class="text-center mb-12">
+                        <h2 class="text-3xl font-bold text-dark">Find Best Specialists</h2>
+                        <p class="text-slate-500 mt-2">Book appointments with top doctors near you</p>
+                    </div>
+
+                    <!-- Filter Bar -->
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 mb-8 flex flex-col md:flex-row gap-4 items-center justify-between">
+                        <div class="flex gap-2 overflow-x-auto no-scrollbar w-full md:w-auto pb-2 md:pb-0" id="category-filters">
+                            <button onclick="renderFunctions.doctors('All')" class="px-4 py-2 bg-primary text-white rounded-full text-sm font-medium whitespace-nowrap shadow-md">All</button>
+                            <button onclick="renderFunctions.doctors('Cardiologist')" class="px-4 py-2 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-full text-sm font-medium whitespace-nowrap">Cardiologist</button>
+                            <button onclick="renderFunctions.doctors('Dermatologist')" class="px-4 py-2 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-full text-sm font-medium whitespace-nowrap">Dermatologist</button>
+                            <button onclick="renderFunctions.doctors('Pediatrician')" class="px-4 py-2 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-full text-sm font-medium whitespace-nowrap">Pediatrician</button>
+                            <button onclick="renderFunctions.doctors('Neurologist')" class="px-4 py-2 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-full text-sm font-medium whitespace-nowrap">Neurologist</button>
+                        </div>
+                        <div class="relative w-full md:w-64">
+                            <input type="text" placeholder="Search doctor..." onkeyup="renderFunctions.searchDoctors(this.value)" class="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-primary outline-none">
+                            <i class="fa-solid fa-search absolute left-3 top-3 text-slate-400"></i>
+                        </div>
+                    </div>
+
+                    <!-- Grid -->
+                    <div id="doctors-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <!-- Injected by JS -->
+                    </div>
+                </section>
+            `,
+            doctorProfile: (docId) => {
+                const doc = MOCK_DOCTORS.find(d => d.id == docId);
+                if (!doc) return `<div class="p-12 text-center">Doctor not found</div>`;
+                return `
+                <section class="container mx-auto px-4 py-12 fade-in">
+                    <button onclick="router('doctors')" class="mb-6 text-slate-500 hover:text-primary"><i class="fa-solid fa-arrow-left mr-2"></i> Back to list</button>
+                    
+                    <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
+                        <div class="grid md:grid-cols-3">
+                            <!-- Left: Image & Basic Info -->
+                            <div class="md:col-span-1 bg-slate-50 p-8 flex flex-col items-center text-center border-r border-slate-100">
+                                <img src="${doc.image}" class="w-48 h-48 rounded-full object-cover shadow-md mb-6 border-4 border-white">
+                                <h1 class="text-2xl font-bold text-dark">${doc.name}</h1>
+                                <span class="bg-blue-100 text-primary px-3 py-1 rounded-full text-sm font-semibold mt-2">${doc.category}</span>
+                                
+                                <div class="flex items-center space-x-1 mt-4 text-yellow-400">
+                                    <i class="fa-solid fa-star"></i>
+                                    <span class="text-slate-700 font-bold ml-1">${doc.rating}</span>
+                                    <span class="text-slate-400 text-sm">(${doc.reviews} reviews)</span>
+                                </div>
+                                
+                                <div class="mt-6 w-full space-y-3">
+                                    <div class="flex justify-between text-sm border-b border-slate-200 pb-2">
+                                        <span class="text-slate-500">Fees</span>
+                                        <span class="font-bold text-dark">$${doc.price}</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm border-b border-slate-200 pb-2">
+                                        <span class="text-slate-500">Experience</span>
+                                        <span class="font-bold text-dark">${doc.experience}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right: Details & Booking -->
+                            <div class="md:col-span-2 p-8">
+                                <h3 class="text-xl font-bold text-dark mb-4">About Doctor</h3>
+                                <p class="text-slate-600 leading-relaxed mb-6">${doc.bio}</p>
+                                
+                                <div class="grid md:grid-cols-2 gap-6 mb-8">
+                                    <div class="bg-slate-50 p-4 rounded-lg">
+                                        <span class="text-slate-500 text-sm block mb-1">Education</span>
+                                        <div class="font-semibold text-dark"><i class="fa-solid fa-graduation-cap text-primary mr-2"></i> ${doc.education}</div>
+                                    </div>
+                                    <div class="bg-slate-50 p-4 rounded-lg">
+                                        <span class="text-slate-500 text-sm block mb-1">Hospital</span>
+                                        <div class="font-semibold text-dark"><i class="fa-regular fa-hospital text-primary mr-2"></i> ${doc.hospital}</div>
+                                    </div>
+                                </div>
+
+                                <div class="bg-blue-50 p-6 rounded-xl border border-blue-100">
+                                    <h3 class="text-lg font-bold text-dark mb-4">Book Appointment</h3>
+                                    <form onsubmit="event.preventDefault(); handleBooking(${doc.id})" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-slate-700 mb-1">Select Date</label>
+                                            <input type="date" id="book-date" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-primary outline-none" required min="${new Date().toISOString().split('T')[0]}">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-slate-700 mb-1">Select Time</label>
+                                            <select id="book-time" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-primary outline-none" required>
+                                                <option value="">Choose slot</option>
+                                                <option value="09:00 AM">09:00 AM</option>
+                                                <option value="10:00 AM">10:00 AM</option>
+                                                <option value="02:00 PM">02:00 PM</option>
+                                                <option value="04:00 PM">04:00 PM</option>
+                                                <option value="06:00 PM">06:00 PM</option>
+                                            </select>
+                                        </div>
+                                        <button type="submit" class="md:col-span-2 bg-primary hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-md transition mt-2">
+                                            Confirm Booking
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                `;
+            },
+            pharmacy: () => `
+                <section class="container mx-auto px-4 py-12 fade-in">
+                    <div class="text-center mb-12">
+                        <h2 class="text-3xl font-bold text-dark">Online Pharmacy</h2>
+                        <p class="text-slate-500 mt-2">Get genuine medicines delivered quickly</p>
+                    </div>
+
+                    <!-- Filter & Search -->
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+                        <div class="flex gap-2">
+                            <button onclick="renderFunctions.pharmacy('All')" class="px-4 py-1.5 rounded-full bg-primary text-white text-sm">All</button>
+                            <button onclick="renderFunctions.pharmacy('Pain Relief')" class="px-4 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 text-sm">Pain Relief</button>
+                            <button onclick="renderFunctions.pharmacy('Antibiotics')" class="px-4 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 text-sm">Antibiotics</button>
+                            <button onclick="renderFunctions.pharmacy('Vitamins')" class="px-4 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 text-sm">Vitamins</button>
+                        </div>
+                        <div class="relative w-full md:w-64">
+                            <input type="text" placeholder="Search medicine..." onkeyup="renderFunctions.searchMeds(this.value)" class="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 outline-none focus:ring-1 focus:ring-primary">
+                            <i class="fa-solid fa-search absolute left-3 top-3 text-slate-400"></i>
+                        </div>
+                    </div>
+
+                    <!-- Grid -->
+                    <div id="medicine-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <!-- Injected JS -->
+                    </div>
+                </section>
+            `,
+            cart: () => `
+                <section class="container mx-auto px-4 py-12 fade-in min-h-[60vh]">
+                    <h2 class="text-2xl font-bold text-dark mb-6">Shopping Cart</h2>
+                    <div class="grid md:grid-cols-3 gap-8">
+                        <!-- Items List -->
+                        <div class="md:col-span-2 bg-white rounded-xl shadow-sm border border-slate-100 p-6" id="cart-items-container">
+                            <!-- Injected JS -->
+                        </div>
+                        
+                        <!-- Summary -->
+                        <div class="md:col-span-1">
+                            <div class="bg-white rounded-xl shadow-lg p-6 sticky top-24 border border-slate-100">
+                                <h3 class="text-lg font-bold text-dark mb-4">Order Summary</h3>
+                                <div class="flex justify-between mb-2 text-slate-600">
+                                    <span>Subtotal</span>
+                                    <span id="cart-subtotal">$0.00</span>
+                                </div>
+                                <div class="flex justify-between mb-2 text-slate-600">
+                                    <span>Delivery Fee</span>
+                                    <span>$5.00</span>
+                                </div>
+                                <div class="border-t border-slate-200 my-4"></div>
+                                <div class="flex justify-between mb-6 text-xl font-bold text-dark">
+                                    <span>Total</span>
+                                    <span id="cart-total">$0.00</span>
+                                </div>
+                                <button onclick="router('checkout')" id="checkout-btn" class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-md">
+                                    Proceed to Checkout
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            `,
+            checkout: () => `
+                <section class="container mx-auto px-4 py-12 fade-in">
+                    <button onclick="router('cart')" class="mb-6 text-slate-500 hover:text-primary"><i class="fa-solid fa-arrow-left mr-2"></i> Back to Cart</button>
+                    <h2 class="text-2xl font-bold text-dark mb-6">Select Payment Method</h2>
+                    
+                    <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-8 border border-slate-100">
+                        <div class="space-y-4" id="payment-methods">
+                            <!-- Card -->
+                            <label class="flex items-center p-4 border rounded-xl cursor-pointer hover:bg-slate-50 transition peer-checked:border-primary border-slate-200 has-[:checked]:border-primary has-[:checked]:bg-blue-50">
+                                <input type="radio" name="payment" value="Card" class="mr-4 accent-primary w-5 h-5">
+                                <div class="flex-1 flex justify-between items-center">
+                                    <span class="font-semibold text-slate-700">Credit/Debit Card</span>
+                                    <i class="fa-regular fa-credit-card text-2xl text-slate-500"></i>
+                                </div>
+                            </label>
+                            
+                            <!-- PayPal -->
+                             <label class="flex items-center p-4 border rounded-xl cursor-pointer hover:bg-slate-50 transition border-slate-200 has-[:checked]:border-primary has-[:checked]:bg-blue-50">
+                                <input type="radio" name="payment" value="PayPal" class="mr-4 accent-primary w-5 h-5">
+                                <div class="flex-1 flex justify-between items-center">
+                                    <span class="font-semibold text-slate-700">PayPal</span>
+                                    <i class="fa-brands fa-paypal text-2xl text-blue-800"></i>
+                                </div>
+                            </label>
+
+                            <!-- Mobile Banking (Simulated icons) -->
+                             <label class="flex items-center p-4 border rounded-xl cursor-pointer hover:bg-slate-50 transition border-slate-200 has-[:checked]:border-primary has-[:checked]:bg-blue-50">
+                                <input type="radio" name="payment" value="bKash" class="mr-4 accent-primary w-5 h-5">
+                                <div class="flex-1 flex justify-between items-center">
+                                    <span class="font-semibold text-slate-700">bKash</span>
+                                    <i class="fa-solid fa-mobile-screen text-2xl text-pink-500"></i>
+                                </div>
+                            </label>
+
+                             <label class="flex items-center p-4 border rounded-xl cursor-pointer hover:bg-slate-50 transition border-slate-200 has-[:checked]:border-primary has-[:checked]:bg-blue-50">
+                                <input type="radio" name="payment" value="Nagad" class="mr-4 accent-primary w-5 h-5">
+                                <div class="flex-1 flex justify-between items-center">
+                                    <span class="font-semibold text-slate-700">Nagad</span>
+                                    <i class="fa-solid fa-mobile-screen text-2xl text-orange-500"></i>
+                                </div>
+                            </label>
+
+                            <!-- COD -->
+                             <label class="flex items-center p-4 border rounded-xl cursor-pointer hover:bg-slate-50 transition border-slate-200 has-[:checked]:border-primary has-[:checked]:bg-blue-50">
+                                <input type="radio" name="payment" value="COD" class="mr-4 accent-primary w-5 h-5">
+                                <div class="flex-1 flex justify-between items-center">
+                                    <span class="font-semibold text-slate-700">Cash on Delivery</span>
+                                    <i class="fa-solid fa-money-bill-wave text-2xl text-green-600"></i>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="mt-8 border-t border-slate-100 pt-6">
+                             <div class="flex justify-between text-xl font-bold text-dark mb-6">
+                                <span>Total to Pay</span>
+                                <span id="checkout-total-display">$0.00</span>
+                            </div>
+                            <button onclick="handlePayment()" id="pay-btn" class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-md flex justify-center items-center">
+                                <span>Confirm Payment</span>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            `,
+            dashboard: () => `
+                <section class="container mx-auto px-4 py-12 fade-in">
+                    <div class="grid md:grid-cols-4 gap-8">
+                        <!-- Sidebar -->
+                        <div class="md:col-span-1">
+                            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 text-center">
+                                <img src="https://ui-avatars.com/api/?name=${db.currentUser.name}&background=eff6ff&color=2563eb&size=128" class="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-slate-50">
+                                <h3 class="text-xl font-bold text-dark">${db.currentUser.name}</h3>
+                                <p class="text-slate-500 text-sm mb-4">${db.currentUser.email}</p>
+                                <button onclick="auth.logout()" class="w-full border border-red-200 text-red-600 hover:bg-red-50 py-2 rounded-lg text-sm font-semibold transition">Sign Out</button>
+                            </div>
+                        </div>
+
+                        <!-- Content -->
+                        <div class="md:col-span-3 space-y-8">
+                            <!-- Appointments -->
+                            <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                                <div class="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                                    <h3 class="font-bold text-dark">Upcoming Appointments</h3>
+                                </div>
+                                <div class="p-6" id="dashboard-appointments">
+                                    <!-- Injected JS -->
+                                </div>
+                            </div>
+
+                            <!-- Orders -->
+                             <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                                <div class="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                                    <h3 class="font-bold text-dark">Order History</h3>
+                                </div>
+                                <div class="p-6" id="dashboard-orders">
+                                    <!-- Injected JS -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            `
+        };
+
+        // --- RENDER FUNCTIONS ---
+
+        const renderFunctions = {
+            doctors: (category = 'All') => {
+                const grid = document.getElementById('doctors-grid');
+                if(!grid) return;
+                
+                // Update filter buttons style
+                const buttons = document.querySelectorAll('#category-filters button');
+                buttons.forEach(btn => {
+                    if (btn.textContent === category) {
+                        btn.className = "px-4 py-2 bg-primary text-white rounded-full text-sm font-medium whitespace-nowrap shadow-md transition";
+                    } else {
+                        btn.className = "px-4 py-2 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-full text-sm font-medium whitespace-nowrap transition";
+                    }
+                });
+
+                const filtered = category === 'All' ? MOCK_DOCTORS : MOCK_DOCTORS.filter(d => d.category === category);
+                
+                grid.innerHTML = filtered.map(doc => `
+                    <div class="bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100 overflow-hidden group">
+                        <div class="relative h-48 overflow-hidden">
+                            <img src="${doc.image}" alt="${doc.name}" class="w-full h-full object-cover transition transform group-hover:scale-110 duration-500">
+                            <span class="absolute top-4 right-4 bg-white/90 backdrop-blur text-dark text-xs font-bold px-2 py-1 rounded-md shadow-sm">
+                                <i class="fa-solid fa-star text-yellow-400 mr-1"></i> ${doc.rating}
+                            </span>
+                        </div>
+                        <div class="p-6">
+                            <div class="text-sm text-primary font-semibold mb-1">${doc.category}</div>
+                            <h3 class="text-xl font-bold text-dark mb-2">${doc.name}</h3>
+                            <p class="text-slate-500 text-sm line-clamp-2 mb-4">${doc.bio}</p>
+                            <div class="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
+                                <span class="text-lg font-bold text-dark">$${doc.price} <span class="text-xs text-slate-400 font-normal">/ visit</span></span>
+                                <button onclick="router('doctor-profile', ${doc.id})" class="text-primary font-semibold hover:bg-blue-50 px-4 py-2 rounded-lg transition">View Profile</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            },
+            searchDoctors: (query) => {
+                const term = query.toLowerCase();
+                const filtered = MOCK_DOCTORS.filter(d => d.name.toLowerCase().includes(term) || d.category.toLowerCase().includes(term));
+                const grid = document.getElementById('doctors-grid');
+                if(grid) grid.innerHTML = filtered.map(doc => `
+                     <div class="bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100 overflow-hidden group">
+                        <div class="relative h-48 overflow-hidden">
+                            <img src="${doc.image}" alt="${doc.name}" class="w-full h-full object-cover transition transform group-hover:scale-110 duration-500">
+                             <span class="absolute top-4 right-4 bg-white/90 backdrop-blur text-dark text-xs font-bold px-2 py-1 rounded-md shadow-sm">
+                                <i class="fa-solid fa-star text-yellow-400 mr-1"></i> ${doc.rating}
+                            </span>
+                        </div>
+                        <div class="p-6">
+                            <div class="text-sm text-primary font-semibold mb-1">${doc.category}</div>
+                            <h3 class="text-xl font-bold text-dark mb-2">${doc.name}</h3>
+                             <p class="text-slate-500 text-sm line-clamp-2 mb-4">${doc.bio}</p>
+                             <div class="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
+                                <span class="text-lg font-bold text-dark">$${doc.price} <span class="text-xs text-slate-400 font-normal">/ visit</span></span>
+                                <button onclick="router('doctor-profile', ${doc.id})" class="text-primary font-semibold hover:bg-blue-50 px-4 py-2 rounded-lg transition">View Profile</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            },
+            pharmacy: (category = 'All') => {
+                const grid = document.getElementById('medicine-grid');
+                if(!grid) return;
+                const filtered = category === 'All' ? MOCK_MEDICINES : MOCK_MEDICINES.filter(m => m.category === category);
+                
+                grid.innerHTML = filtered.map(med => `
+                    <div class="bg-white rounded-xl shadow-sm hover:shadow-lg transition border border-slate-100 overflow-hidden group">
+                        <div class="h-48 overflow-hidden relative bg-slate-50">
+                            <img src="${med.image}" class="w-full h-full object-cover mix-blend-multiply p-4 transition transform group-hover:scale-110">
+                        </div>
+                        <div class="p-5">
+                            <span class="text-xs font-semibold text-slate-400 uppercase">${med.category}</span>
+                            <h4 class="font-bold text-dark text-lg mb-1 leading-tight h-14">${med.name}</h4>
+                            <div class="flex justify-between items-center mt-3">
+                                <span class="text-lg font-bold text-primary">$${med.price.toFixed(2)}</span>
+                                <button onclick="core.addToCart(${med.id})" class="w-8 h-8 rounded-full bg-blue-50 text-primary flex items-center justify-center hover:bg-primary hover:text-white transition shadow-sm"><i class="fa-solid fa-plus"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            },
+            searchMeds: (query) => {
+                const term = query.toLowerCase();
+                 const grid = document.getElementById('medicine-grid');
+                if(!grid) return;
+                const filtered = MOCK_MEDICINES.filter(m => m.name.toLowerCase().includes(term) || m.category.toLowerCase().includes(term));
+                grid.innerHTML = filtered.map(med => `
+                    <div class="bg-white rounded-xl shadow-sm hover:shadow-lg transition border border-slate-100 overflow-hidden group">
+                        <div class="h-48 overflow-hidden relative bg-slate-50">
+                            <img src="${med.image}" class="w-full h-full object-cover mix-blend-multiply p-4 transition transform group-hover:scale-110">
+                        </div>
+                        <div class="p-5">
+                             <span class="text-xs font-semibold text-slate-400 uppercase">${med.category}</span>
+                            <h4 class="font-bold text-dark text-lg mb-1 leading-tight h-14">${med.name}</h4>
+                            <div class="flex justify-between items-center mt-3">
+                                <span class="text-lg font-bold text-primary">$${med.price.toFixed(2)}</span>
+                                <button onclick="core.addToCart(${med.id})" class="w-8 h-8 rounded-full bg-blue-50 text-primary flex items-center justify-center hover:bg-primary hover:text-white transition shadow-sm"><i class="fa-solid fa-plus"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            },
+            cart: () => {
+                const container = document.getElementById('cart-items-container');
+                const subDisplay = document.getElementById('cart-subtotal');
+                const totalDisplay = document.getElementById('cart-total');
+                const checkoutBtn = document.getElementById('checkout-btn');
+                
+                if (!container) return;
+
+                if (db.cart.length === 0) {
+                    container.innerHTML = `<div class="text-center py-12"><i class="fa-solid fa-basket-shopping text-6xl text-slate-200 mb-4"></i><p class="text-slate-500">Your cart is empty</p><button onclick="router('pharmacy')" class="mt-4 text-primary font-semibold">Browse Medicines</button></div>`;
+                    subDisplay.innerText = '$0.00';
+                    totalDisplay.innerText = '$0.00';
+                    checkoutBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    checkoutBtn.disabled = true;
+                    return;
+                }
+
+                checkoutBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                checkoutBtn.disabled = false;
+
+                let subtotal = 0;
+                container.innerHTML = db.cart.map(item => {
+                    const total = item.price * item.qty;
+                    subtotal += total;
+                    return `
+                        <div class="flex items-center gap-4 py-4 border-b border-slate-100 last:border-0">
+                            <img src="${item.image}" class="w-20 h-20 rounded-lg object-cover bg-slate-50">
+                            <div class="flex-1">
+                                <h4 class="font-bold text-dark">${item.name}</h4>
+                                <div class="text-slate-500 text-sm">$${item.price} each</div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <button onclick="core.updateQty(${item.id}, -1)" class="w-6 h-6 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center">-</button>
+                                <span class="font-semibold w-4 text-center">${item.qty}</span>
+                                <button onclick="core.updateQty(${item.id}, 1)" class="w-6 h-6 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center">+</button>
+                            </div>
+                            <div class="font-bold text-dark w-16 text-right">$${total.toFixed(2)}</div>
+                            <button onclick="core.removeFromCart(${item.id})" class="text-red-400 hover:text-red-600 ml-2"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    `;
+                }).join('');
+
+                subDisplay.innerText = `$${subtotal.toFixed(2)}`;
+                totalDisplay.innerText = `$${(subtotal + 5).toFixed(2)}`;
+                
+                // Update badge
+                const badge = document.getElementById('cart-badge');
+                if(db.cart.length > 0) {
+                    badge.classList.remove('hidden');
+                    badge.innerText = db.cart.length;
+                } else {
+                    badge.classList.add('hidden');
+                }
+            },
+            dashboard: () => {
+                const apptsContainer = document.getElementById('dashboard-appointments');
+                const ordersContainer = document.getElementById('dashboard-orders');
+                
+                if(apptsContainer) {
+                    const myAppts = db.appointments.filter(a => a.userId === db.currentUser.id);
+                    if(myAppts.length === 0) apptsContainer.innerHTML = '<p class="text-slate-500">No appointments yet.</p>';
+                    else {
+                        apptsContainer.innerHTML = myAppts.map(a => `
+                            <div class="flex items-center gap-4 mb-4 p-4 border border-slate-100 rounded-lg bg-slate-50/50">
+                                <img src="${a.doctorImg}" class="w-12 h-12 rounded-full object-cover">
+                                <div class="flex-1">
+                                    <h4 class="font-bold text-dark">${a.doctorName}</h4>
+                                    <div class="text-sm text-slate-500"><i class="fa-regular fa-calendar mr-1"></i> ${utils.formatDate(a.date)} at ${a.time}</div>
+                                </div>
+                                <div class="text-right">
+                                    <span class="inline-block px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded mb-1">${a.status}</span>
+                                    <div class="text-xs text-slate-500"><i class="fa-solid fa-phone"></i> ${a.contact}</div>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                }
+
+                if(ordersContainer) {
+                    const myOrders = db.orders.filter(o => o.userId === db.currentUser.id).reverse();
+                    if(myOrders.length === 0) ordersContainer.innerHTML = '<p class="text-slate-500">No orders yet.</p>';
+                    else {
+                        ordersContainer.innerHTML = myOrders.map(o => `
+                            <div class="mb-4 p-4 border border-slate-100 rounded-lg bg-slate-50/50">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div>
+                                        <span class="font-bold text-dark text-sm">#${o.id}</span>
+                                        <div class="text-xs text-slate-400">${utils.formatDate(o.date)}</div>
+                                    </div>
+                                    <span class="text-primary font-bold">$${o.total}</span>
+                                </div>
+                                <div class="flex items-center gap-2 mb-2 overflow-x-auto no-scrollbar">
+                                    ${o.items.map(i => `<img src="${i.image}" class="w-8 h-8 rounded border border-slate-200" title="${i.name}">`).join('')}
+                                </div>
+                                <div class="flex justify-between items-center text-xs mt-2 border-t border-slate-200 pt-2">
+                                    <span class="text-slate-500">Paid via ${o.paymentMethod}</span>
+                                    <span class="text-green-600 font-bold">Success</span>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                }
+            }
+        };
+
+        // --- CONTROLLER / ROUTER ---
+
+        function updateUI() {
+            // Update Auth Buttons
+            const desktopAuth = document.getElementById('auth-buttons-desktop');
+            const mobileAuth = document.getElementById('auth-buttons-mobile');
+            const desktopUser = document.getElementById('user-menu-desktop');
+            const mobileUser = document.getElementById('user-menu-mobile');
+            const cartBadge = document.getElementById('cart-badge');
+
+            if (db.currentUser) {
+                desktopAuth.classList.add('hidden');
+                mobileAuth.classList.add('hidden');
+                desktopUser.classList.remove('hidden');
+                mobileUser.classList.remove('hidden');
+                
+                document.getElementById('nav-user-name').innerText = db.currentUser.name.split(' ')[0];
+                document.getElementById('nav-user-img').src = `https://ui-avatars.com/api/?name=${db.currentUser.name}&background=eff6ff&color=2563eb`;
+            } else {
+                desktopAuth.classList.remove('hidden');
+                mobileAuth.classList.remove('hidden');
+                desktopUser.classList.add('hidden');
+                mobileUser.classList.add('hidden');
+            }
+
+            // Update Cart Badge
+            const count = db.cart.reduce((a, b) => a + b.qty, 0);
+             if(count > 0) {
+                cartBadge.classList.remove('hidden');
+                cartBadge.innerText = count;
+            } else {
+                cartBadge.classList.add('hidden');
+            }
+        }
+
+        function router(pageId, param = null) {
+            window.scrollTo(0,0);
+            const content = document.getElementById('app-content');
+            
+            // Protected Routes
+            if (['dashboard', 'checkout'].includes(pageId) && !db.currentUser) {
+                utils.toast('Please log in first', 'error');
+                router('login');
+                return;
+            }
+
+            switch(pageId) {
+                case 'home':
+                    content.innerHTML = templates.home();
+                    break;
+                case 'login':
+                    content.innerHTML = templates.login();
+                    break;
+                case 'signup':
+                    content.innerHTML = templates.signup();
+                    break;
+                case 'doctors':
+                    content.innerHTML = templates.doctors();
+                    renderFunctions.doctors();
+                    break;
+                case 'doctor-profile':
+                    content.innerHTML = templates.doctorProfile(param);
+                    break;
+                case 'pharmacy':
+                    content.innerHTML = templates.pharmacy();
+                    renderFunctions.pharmacy();
+                    break;
+                case 'cart':
+                    content.innerHTML = templates.cart();
+                    renderFunctions.cart();
+                    break;
+                case 'checkout':
+                    content.innerHTML = templates.checkout();
+                    // Calc total for checkout page
+                    const sub = db.cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
+                    document.getElementById('checkout-total-display').innerText = `$${(sub + 5).toFixed(2)}`;
+                    break;
+                case 'dashboard':
+                    content.innerHTML = templates.dashboard();
+                    renderFunctions.dashboard();
+                    break;
+                default:
+                    content.innerHTML = templates.home();
+            }
+            updateUI();
+        }
+
+        // --- EVENT HANDLERS ---
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        }
+
+        function handleLoginForm() {
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-pass').value;
+            const btn = document.getElementById('login-btn');
+            
+            // Loader Animation
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<div class="loader w-5 h-5 mx-auto border-t-white"></div>';
+            btn.disabled = true;
+
+            setTimeout(() => {
+                const success = auth.login(email, pass);
+                if (!success) {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            }, 1000);
+        }
+
+        function handleSignupForm() {
+            const name = document.getElementById('signup-name').value;
+            const email = document.getElementById('signup-email').value;
+            const phone = document.getElementById('signup-phone').value;
+            const pass = document.getElementById('signup-pass').value;
+            const confirmPass = document.getElementById('signup-confirm-pass').value;
+            
+            if (pass.length < 6) {
+                utils.toast('Password must be at least 6 characters', 'error');
+                return;
+            }
+
+            if (pass !== confirmPass) {
+                utils.toast('Passwords do not match', 'error');
+                return;
+            }
+
+            auth.signup(name, email, phone, pass);
+        }
+
+        function handleBooking(docId) {
+            const date = document.getElementById('book-date').value;
+            const time = document.getElementById('book-time').value;
+            if(!date || !time) {
+                utils.toast('Please select date and time', 'error');
+                return;
+            }
+            core.bookAppointment(docId, date, time);
+        }
+
+        function handlePayment() {
+            const selected = document.querySelector('input[name="payment"]:checked');
+            if (!selected) {
+                utils.toast('Select a payment method', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('pay-btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<div class="loader w-6 h-6 border-t-white"></div>';
+            btn.disabled = true;
+
+            // Simulate Processing
+            setTimeout(() => {
+                const sub = db.cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
+                const total = (sub + 5).toFixed(2);
+                
+                const orderId = core.placeOrder(selected.value, total);
+                
+                // Success Modal/Screen
+                document.getElementById('app-content').innerHTML = `
+                    <div class="min-h-screen flex items-center justify-center bg-slate-50 px-4 fade-in">
+                        <div class="bg-white p-8 rounded-2xl shadow-xl text-center max-w-md w-full border border-slate-100">
+                            <div class="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-6">
+                                <i class="fa-solid fa-check"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold text-dark mb-2">Payment Successful!</h2>
+                            <p class="text-slate-500 mb-6">Transaction ID: ${Math.random().toString(36).substr(2, 12).toUpperCase()}</p>
+                            <div class="bg-slate-50 rounded-lg p-4 mb-6 text-left">
+                                <div class="flex justify-between mb-2"><span class="text-slate-500">Amount Paid</span><span class="font-bold text-dark">$${total}</span></div>
+                                <div class="flex justify-between"><span class="text-slate-500">Payment Mode</span><span class="font-bold text-dark">${selected.value}</span></div>
+                            </div>
+                            <button onclick="router('dashboard')" class="w-full bg-primary text-white font-bold py-3 rounded-lg shadow-md hover:bg-blue-700 transition">Go to Dashboard</button>
+                        </div>
+                    </div>
+                `;
+                updateUI();
+            }, 2000);
+        }
+
+        // --- INITIALIZATION ---
+        
+        window.addEventListener('load', () => {
+            updateUI();
+            router('home');
+        });
+
+    </script>
+</body>
+</html>
